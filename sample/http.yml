@@ -1,0 +1,41 @@
+name: http
+context:
+  crystal: crystal eval 'puts Crystal::VERSION'
+  host: uname
+measure:
+  - time
+  - cpu_time
+  - max_rss
+  - requests_per_second:
+      regex: Requests per second:\s+(?<measure>\d+.\d+)\s+\[#/sec\] \(mean\)
+run: ./http
+repeat: 3
+loader: ./wait-for-it.sh 127.0.0.1:8080 -- ab -c 4 -n 100 http://127.0.0.1:8080/
+before: crystal build --release http.cr -o ./http
+after: rm -f ./http ./http.dwarf
+matrix:
+  include:
+    -
+      env:
+        REQUESTS: 100
+        CONNECTIONS: 4
+    -
+      env:
+        REQUESTS: 1000
+        CONNECTIONS: 4
+    -
+      env:
+        REQUESTS: 10000
+        CONNECTIONS: 4
+    -
+      env:
+        REQUESTS: 100
+        CONNECTIONS: 40
+    -
+      env:
+        REQUESTS: 1000
+        CONNECTIONS: 40
+    -
+      env:
+        REQUESTS: 10000
+        CONNECTIONS: 40

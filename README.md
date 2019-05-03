@@ -8,7 +8,12 @@ TODO: Write installation instructions here
 
 ## Usage
 
-TODO: Write usage instructions here
+Ensure that `time` and `ab` are installed. `$ apt-get install time apache2-utils`
+
+```
+$ shards build
+$ ./bin/benchy --csv=output.csv ./sample/http.yml
+```
 
 ## Development
 
