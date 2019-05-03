@@ -65,7 +65,7 @@ describe Benchy::Manifest do
   measure:
     - time
     - foo:
-        regex: /\d+/
+        regex: foo(<measure>\d+)bar
   run: ./run
   loader: ab
   YAML
@@ -76,7 +76,7 @@ describe Benchy::Manifest do
     - time
     - foo:
         regex:
-          pattern: /hs(\d)f/
+          pattern: hs(\d)f
           group: 1
           transform: tr '.' ''
   run: ./run

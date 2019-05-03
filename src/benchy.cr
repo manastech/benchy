@@ -213,8 +213,32 @@ module Benchy
             raise "Missing time measure" unless md
             "#{md[3]}.#{md[4]}".to_f64 + "#{md[5]}.#{md[6]}".to_f64
           }
+        when Hash
+          mesure_config.each do |key, config|
+            proc = case config
+                   when Manifest::CustomMeasure
+                     pattern = case c = config.regex
+                               when String
+                                 c
+                               else
+                                 raise "Not Supported #{key} #{config}"
+                               end
+
+                     ->(main_output : String) {
+                       md = main_output.match(Regex.new(pattern, :multiline))
+                       raise "Missing #{key} measure" unless md
+                       md["measure"]?.try(&.to_f64) || md[0].to_f64
+                     }
+                   end
+
+            if proc
+              res[key] = proc
+            else
+              raise "Not Supported #{key} #{config}"
+            end
+          end
         else
-          raise "Not Supported"
+          raise "Not Supported #{mesure_config}"
         end
       end
 
