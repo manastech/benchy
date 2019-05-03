@@ -1,0 +1,13 @@
+name: benchy
+version: 0.1.0
+
+authors:
+  - Brian J. Cardiff <bcardiff@gmail.com>
+
+targets:
+  benchy:
+    main: src/cli.cr
+
+crystal: 0.28.0
+
+license: MIT
