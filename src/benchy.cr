@@ -1,4 +1,5 @@
 require "./manifest"
+require "./instrument"
 
 module Benchy
   VERSION = "0.1.0"
@@ -71,6 +72,9 @@ module Benchy
       @configurations = Project.build_configurations(manifest)
 
       @measure_samplers = Project.build_samplers(manifest)
+
+      has_bin_time = Process.run("which", {"/usr/bin/time"}, output: Process::Redirect::Close).success?
+      raise "Missing /usr/bin/time" unless has_bin_time
     end
 
     def run : Array(RunResult)
@@ -94,10 +98,9 @@ module Benchy
     def run_once(configuration : Configuration) : RunOnceResult
       exec_before_each
 
-      # TODO linux support
       main_pid_file = File.tempname("main", ".pid")
       save_pid_and_wait = @loader ? " & echo $! > #{main_pid_file} & wait" : ""
-      instrumented_main = "/usr/bin/time -l /bin/sh -c '#{main}#{save_pid_and_wait}'"
+      instrumented_main = "#{Benchy::BIN_TIME} /bin/sh -c '#{main}#{save_pid_and_wait}'"
 
       main_process = Process.new(command: instrumented_main,
         env: configuration[:env],
@@ -192,27 +195,11 @@ module Benchy
       manifest.measure.each do |mesure_config|
         case mesure_config
         when "max_rss"
-          res["max_rss"] = ->(main_output : String) {
-            # TODO linux support
-            md = main_output.match /(\d+)\s+maximum resident set size/m
-            raise "Missing max_rss measure" unless md
-            # Kb to bytes
-            (md[1].to_i64 * 1024).to_f64
-          }
+          res["max_rss"] = MAX_RSS_PROC
         when "time"
-          res["time"] = ->(main_output : String) {
-            # TODO linux support
-            md = main_output.match /(\d+).(\d+)\sreal\s+(\d+).(\d+)\suser\s+(\d+).(\d+)\ssys/m
-            raise "Missing time measure" unless md
-            "#{md[1]}.#{md[2]}".to_f64
-          }
+          res["time"] = TIME_PROC
         when "cpu_time"
-          res["cpu_time"] = ->(main_output : String) {
-            # TODO linux support
-            md = main_output.match /(\d+).(\d+)\sreal\s+(\d+).(\d+)\suser\s+(\d+).(\d+)\ssys/m
-            raise "Missing time measure" unless md
-            "#{md[3]}.#{md[4]}".to_f64 + "#{md[5]}.#{md[6]}".to_f64
-          }
+          res["cpu_time"] = CPU_TIME_PROC
         when Hash
           mesure_config.each do |key, config|
             proc = case config
