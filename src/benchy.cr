@@ -9,7 +9,7 @@ module Benchy
     alias Sample = Float64
     alias Measure = {avg: Sample, std: Sample}
 
-    record RunOnceResult, status : Process::Status, measures : Hash(String, Sample)
+    record RunOnceResult, status : Process::Status, measures : Hash(String, Sample)?
     record RunResult, configuration : Configuration, succeeded : Int32, errored : Int32, measures : Hash(String, Measure)
     record RunResultBuilder, configuration : Configuration, succeeded : Int32, errored : Int32, measures : Hash(String, Array(Sample)) do
       def self.zero(configuration : Configuration, measures : Array(String))
@@ -23,8 +23,10 @@ module Benchy
       def add(r : RunOnceResult)
         @succeeded += r.status.success? ? 1 : 0
         @errored += r.status.success? ? 0 : 1
-        @measures.each do |key, value|
-          value << r.measures[key]
+        if m = r.measures
+          @measures.each do |key, value|
+            value << m[key]
+          end
         end
       end
 
@@ -110,6 +112,7 @@ module Benchy
         chdir: base_dir.to_s)
 
       loader_output = loader_error = ""
+      loader_status = nil
 
       if loader = @loader
         loader_process = Process.new(command: loader,
@@ -131,9 +134,12 @@ module Benchy
       main_error = main_process.error.gets_to_end
       main_status = main_process.wait
 
+      run_status = main_status
+      run_status = loader_status if loader_status && !loader_status.success?
+
       RunOnceResult.new(
-        status: main_status,
-        measures: extract_measures(main_output + main_error + loader_output + loader_error)
+        status: run_status,
+        measures: run_status.success? ? extract_measures(main_output + main_error + loader_output + loader_error) : nil
       )
     ensure
       exec_after_each
