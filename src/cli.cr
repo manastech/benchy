@@ -4,10 +4,15 @@ require "./benchy"
 
 cli_manifest_paths = nil
 cli_csv_file = nil
+cli_keep_logs = false
 
 OptionParser.parse! do |opts|
   opts.on("--csv=FILE", "Save results as csv") do |v|
     cli_csv_file = v
+  end
+
+  opts.on("--keep-logs", "Save run and loader logs") do |v|
+    cli_keep_logs = v
   end
 
   opts.unknown_args do |before_dash, after_dash|
@@ -19,7 +24,7 @@ if manifest_paths = cli_manifest_paths
   manifest_paths.each do |manifest_path|
     manifest = Benchy::Manifest.from_yaml(File.read(manifest_path))
     project = Benchy::Project.new(manifest, manifest_path.parent)
-    results = project.run
+    results = project.run(run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil)
 
     if csv_file = cli_csv_file
       File.open(csv_file, mode: "w") do |io|

@@ -1,5 +1,6 @@
 require "./manifest"
 require "./instrument"
+require "./output_recorder"
 
 module Benchy
   VERSION = "0.1.0"
@@ -79,14 +80,14 @@ module Benchy
       raise "Missing /usr/bin/time" unless has_bin_time
     end
 
-    def run : Array(RunResult)
+    def run(run_logger) : Array(RunResult)
       res = Array(RunResult).new
       exec_before
 
-      runnable_configurations.each do |configuration|
+      runnable_configurations.each_with_index do |configuration, config_index|
         builder = RunResultBuilder.zero(configuration, measure_keys)
-        repeat.times do
-          builder.add(run_once(configuration))
+        repeat.times do |run_index|
+          builder.add(run_once(configuration, run_logger, config_index, run_index))
         end
 
         res << builder.build
@@ -97,7 +98,7 @@ module Benchy
       res
     end
 
-    def run_once(configuration : Configuration) : RunOnceResult
+    def run_once(configuration : Configuration, run_logger, config_index, run_index) : RunOnceResult
       exec_before_each
 
       main_pid_file = File.tempname("main", ".pid")
@@ -128,6 +129,8 @@ module Benchy
 
         `kill -9 #{File.read(main_pid_file)}`
         File.delete main_pid_file
+        # TODO if the main errored alread (eg: busy port)
+        #      the kill -9 will fail. Need to catch exception
       end
 
       main_output = main_process.output.gets_to_end
@@ -136,6 +139,13 @@ module Benchy
 
       run_status = main_status
       run_status = loader_status if loader_status && !loader_status.success?
+
+      if run_logger
+        run_logger.log(name: name, config_index: config_index, run_index: run_index,
+          config: configuration, run_status: run_status,
+          main_status: main_status, main_output: main_output, main_error: main_error,
+          loader_status: loader_status, loader_output: loader_output, loader_error: loader_error)
+      end
 
       RunOnceResult.new(
         status: run_status,
