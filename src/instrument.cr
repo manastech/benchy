@@ -4,8 +4,9 @@ module Benchy
     MAX_RSS_PROC = ->(output : String) {
       md = output.match /(\d+)\s+maximum resident set size/m
       raise "Missing max_rss measure" unless md
-      # Kb to bytes
-      (md[1].to_i64 * 1024).to_f64
+      # in osx it is already in bytes
+      # ref: https://unix.stackexchange.com/questions/30940/getrusage-system-call-what-is-maximum-resident-set-size#comment552809_30940
+      md[1].to_f64
     }
 
     TIME_REGEX = /(?<real>(\d+).(\d+))\sreal\s+(?<user>(\d+).(\d+))\suser\s+(?<sys>(\d+).(\d+))\ssys/m
