@@ -2,22 +2,34 @@
 
 A tool to perform benchmarks.
 
+Allows declaration of program to run and measurements to do (cpu time, user time, max resident set size, etc.) in a manifest `.yml` file.
+
+The measurements will already compute average and standard deviation.
+
+It supports client/server programs to run HTTP servers against tools like `ab`.
+
+It supports runnings the program against multiple configurations.
+
 ## Installation
 
-TODO: Write installation instructions here
+```sh
+$ git clone https://github.com/manastech/benchy.git
+$ cd benchy
+$ shards build
+```
+
+Use `./bin/benchy` or copy it your somewhere in your PATH.
 
 ## Usage
 
+Read the full [DOCS](./DOCS.md) or run one of the samples included in `./sample`
+
 Ensure that `time` and `ab` are installed. `$ apt-get install time apache2-utils`
 
-```
+```sh
 $ shards build
-$ ./bin/benchy --csv=output.csv ./sample/http.yml
+$ ./bin/benchy run --csv=output.csv ./sample/http.yml
 ```
-
-## Development
-
-TODO: Write development instructions here
 
 ## Contributing
 
