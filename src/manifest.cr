@@ -4,6 +4,7 @@ module Benchy
   class Manifest
     class Matrix
       YAML.mapping(
+        env: Hash(String, Array(String | Int64))?,
         include: Array(RunConfig)?
       )
     end

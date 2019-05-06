@@ -93,4 +93,19 @@ describe Benchy::Manifest do
           group: num
   run: ./run
   YAML
+
+  it_parses "matrix env", <<-YAML
+  name: sample
+  measure:
+    - time
+  run: ./run
+  matrix:
+    env:
+      FOO:
+        - 1
+        - 10
+      BAR:
+        - a
+        - b
+  YAML
 end

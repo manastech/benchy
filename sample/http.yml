@@ -14,28 +14,11 @@ loader: ./wait-for-it.sh 127.0.0.1:8080 -- ab -c $CONNECTIONS -n $REQUESTS http:
 before: crystal build --release http.cr -o ./http
 after: rm -f ./http ./http.dwarf
 matrix:
-  include:
-    -
-      env:
-        REQUESTS: 100
-        CONNECTIONS: 4
-    -
-      env:
-        REQUESTS: 1000
-        CONNECTIONS: 4
-    -
-      env:
-        REQUESTS: 10000
-        CONNECTIONS: 4
-    -
-      env:
-        REQUESTS: 100
-        CONNECTIONS: 40
-    -
-      env:
-        REQUESTS: 1000
-        CONNECTIONS: 40
-    -
-      env:
-        REQUESTS: 10000
-        CONNECTIONS: 40
+  env:
+    REQUESTS:
+      - 100
+      - 1000
+      - 10000
+    CONNECTIONS:
+      - 4
+      - 40

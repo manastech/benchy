@@ -80,13 +80,13 @@ module Benchy
       raise "Missing /usr/bin/time" unless has_bin_time
     end
 
-    def run(run_logger) : Array(RunResult)
+    def run(run_logger, *, config_selector = nil, repeat = nil) : Array(RunResult)
       res = Array(RunResult).new
       exec_before
 
-      runnable_configurations.each_with_index do |configuration, config_index|
+      runnable_configurations(config_selector).each do |(configuration, config_index)|
         builder = RunResultBuilder.zero(configuration, measure_keys)
-        repeat.times do |run_index|
+        (repeat || self.repeat).times do |run_index|
           builder.add(run_once(configuration, run_logger, config_index, run_index))
         end
 
@@ -140,16 +140,19 @@ module Benchy
       run_status = main_status
       run_status = loader_status if loader_status && !loader_status.success?
 
+      measures = extract_measures(main_output + main_error + loader_output + loader_error) if run_status.success?
+
       if run_logger
         run_logger.log(name: name, config_index: config_index, run_index: run_index,
           config: configuration, run_status: run_status,
           main_status: main_status, main_output: main_output, main_error: main_error,
-          loader_status: loader_status, loader_output: loader_output, loader_error: loader_error)
+          loader_status: loader_status, loader_output: loader_output, loader_error: loader_error,
+          measures: measures)
       end
 
       RunOnceResult.new(
         status: run_status,
-        measures: run_status.success? ? extract_measures(main_output + main_error + loader_output + loader_error) : nil
+        measures: measures
       )
     ensure
       exec_after_each
@@ -175,8 +178,15 @@ module Benchy
       end
     end
 
-    def runnable_configurations
-      configurations
+    def runnable_configurations(config_selector = nil)
+      if (index = config_selector.try(&.to_i?))
+        index = index % configurations.size
+        return [{configurations[index], index}]
+      else
+        configurations.map_with_index do |c, index|
+          {c, index}
+        end
+      end
     end
 
     def measure_keys : Array(String)
@@ -195,14 +205,34 @@ module Benchy
 
     def self.build_configurations(manifest)
       # no matrix means a single empty config
+      result = [] of Configuration
+
+      if (matrix_env = manifest.matrix.try(&.env)) &&
+         !matrix_env.empty?
+        # empty configuration to start duplicating them
+        result << {env: Hash(String, String).new}
+
+        matrix_env.each do |key, values|
+          values = values.map &.to_s
+          result = result.flat_map do |r|
+            values.map do |v|
+              r.clone.tap do |r|
+                r[:env][key] = v
+              end
+            end
+          end
+        end
+      end
+
       if (matrix_include = manifest.matrix.try(&.include)) &&
          !matrix_include.empty?
-        matrix_include.map do |run_config|
-          {env: run_config.env.transform_values(&.to_s)}
+        matrix_include.each do |run_config|
+          result << {env: run_config.env.transform_values(&.to_s)}
         end
-      else
-        [{env: Hash(String, String).new}]
       end
+
+      result << {env: Hash(String, String).new} if result.empty?
+      result
     end
 
     def self.build_samplers(manifest) : Hash(String, ExtractSampleProc)

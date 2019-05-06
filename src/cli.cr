@@ -2,55 +2,141 @@ require "csv"
 require "option_parser"
 require "./benchy"
 
-cli_manifest_paths = nil
-cli_csv_file = nil
-cli_keep_logs = false
+def init_projects(manifest_paths)
+  manifest_paths.map do |manifest_path|
+    manifest = Benchy::Manifest.from_yaml(File.read(manifest_path))
 
-OptionParser.parse! do |opts|
-  opts.on("--csv=FILE", "Save results as csv") do |v|
-    cli_csv_file = v
-  end
-
-  opts.on("--keep-logs", "Save run and loader logs") do |v|
-    cli_keep_logs = v
-  end
-
-  opts.unknown_args do |before_dash, after_dash|
-    cli_manifest_paths = before_dash.map { |f| Path.new(f) }
+    Benchy::Project.new(manifest, manifest_path.parent)
   end
 end
 
-if manifest_paths = cli_manifest_paths
-  manifest_paths.each do |manifest_path|
-    manifest = Benchy::Manifest.from_yaml(File.read(manifest_path))
-    project = Benchy::Project.new(manifest, manifest_path.parent)
-    results = project.run(run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil)
+def show_config(config)
+  config[:env].each do |k, v|
+    print k
+    print "="
+    print v
+    print " "
+  end
+  puts
+end
 
-    if csv_file = cli_csv_file
-      File.open(csv_file, mode: "w") do |io|
-        context_keys = project.context.keys
-        configuration_keys = project.configuration_keys
-        measures_keys = project.measure_keys
-        prefix = ->(p : String, keys : Array(String)) {
-          keys.map { |k| "#{p}#{k}" }
-        }
-        CSV.build(io) do |csv|
-          csv.row(["name"].concat(
-            prefix.call("ctx.", context_keys))
-            .concat(prefix.call("cnf.", configuration_keys))
-            .concat(measures_keys.flat_map { |m| ["#{m}.avg", "#{m}.std"] })
-            .concat(["succeeded", "errored"]))
-          results.each do |r|
-            csv.row([project.name].concat(
-              context_keys.map { |k| project.context[k] })
-              .concat(configuration_keys.map { |k| r.configuration[:env][k] })
-              .concat(measures_keys.flat_map { |k| m = r.measures[k]; [m[:avg].to_s, m[:std].to_s] })
-              .concat([r.succeeded.to_s, r.errored.to_s]))
+case ARGV.first?
+when "run"
+  cli_manifest_paths = nil
+  cli_csv_file = nil
+  cli_keep_logs = false
+
+  OptionParser.parse(ARGV[1..]) do |opts|
+    opts.on("--csv=FILE", "Save results as csv") do |v|
+      cli_csv_file = v
+    end
+
+    opts.on("--keep-logs", "Save run and loader logs") do |v|
+      cli_keep_logs = v
+    end
+
+    opts.unknown_args do |before_dash, after_dash|
+      cli_manifest_paths = before_dash.map { |f| Path.new(f) }
+    end
+  end
+
+  if manifest_paths = cli_manifest_paths
+    init_projects(manifest_paths).each do |project|
+      results = project.run(
+        run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil
+      )
+
+      if csv_file = cli_csv_file
+        File.open(csv_file, mode: "w") do |io|
+          context_keys = project.context.keys
+          configuration_keys = project.configuration_keys
+          measures_keys = project.measure_keys
+          prefix = ->(p : String, keys : Array(String)) {
+            keys.map { |k| "#{p}#{k}" }
+          }
+          CSV.build(io) do |csv|
+            csv.row(["name"].concat(
+              prefix.call("ctx.", context_keys))
+              .concat(prefix.call("cnf.", configuration_keys))
+              .concat(measures_keys.flat_map { |m| ["#{m}.avg", "#{m}.std"] })
+              .concat(["succeeded", "errored"]))
+            results.each do |r|
+              csv.row([project.name].concat(
+                context_keys.map { |k| project.context[k] })
+                .concat(configuration_keys.map { |k| r.configuration[:env][k] })
+                .concat(measures_keys.flat_map { |k| m = r.measures[k]; [m[:avg].to_s, m[:std].to_s] })
+                .concat([r.succeeded.to_s, r.errored.to_s]))
+            end
           end
         end
       end
+
+      break # only perform one manifest for now
+    end
+  else
+    # missing manifest .yml
+  end
+when /run:(-?\d+)/
+  cli_manifest_paths = nil
+  cli_keep_logs = false
+  cli_repeat = nil
+
+  OptionParser.parse(ARGV[1..]) do |opts|
+    opts.on("--keep-logs", "Save run and loader logs") do |v|
+      cli_keep_logs = v
     end
 
-    break # only perform one manifest for now
+    opts.on("--repeat=N", "Override number of repeats") do |n|
+      cli_repeat = n.to_i
+    end
+
+    opts.unknown_args do |before_dash, after_dash|
+      cli_manifest_paths = before_dash.map { |f| Path.new(f) }
+    end
   end
+
+  config_selector = $1
+  if manifest_paths = cli_manifest_paths
+    init_projects(manifest_paths).each do |project|
+      results = project.run(
+        run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil,
+        config_selector: config_selector,
+        repeat: cli_repeat
+      )
+
+      result = results.first
+
+      show_config(result.configuration)
+      puts "succeeded: #{result.succeeded}"
+      puts "errored: #{result.errored}"
+      result.measures.each do |k, m|
+        print "#{k}: #{m[:avg]}"
+        print " (#{m[:std]})" unless m[:std].nan?
+        puts
+      end
+
+      break # only perform one manifest for now
+    end
+  else
+    # missing manifest .yml
+  end
+when "matrix"
+  manifest_paths = ARGV[1..].map { |f| Path.new(f) }
+  init_projects(manifest_paths).each do |project|
+    puts "#{project.name}:"
+    project.configurations.each_with_index do |config, index|
+      print "%5d: " % [index]
+      show_config(config)
+    end
+    puts
+  end
+else
+  puts <<-USAGE
+    ./benchy [command] [switches] [manifest.yml]
+
+    Command:
+        run         runs a .yml manifest file
+        run:index   runs a .yml manifest file against one single matrix configuration
+        matrix      shows all the matrix configuration
+    USAGE
 end
