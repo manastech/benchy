@@ -12,7 +12,7 @@ Given a `manifest.yml` file there are three commands.
 
 The `--csv` will store the measures in a CSV file.
 The `--ndjson` will store the measures in a NDJSON file.
-The `--keep-logs` will store in `./benchy_logs` the output of each execution.
+The `--keep-logs` will store in `.benchy_logs` the output of each execution.
 
 ### run:\[index\] - Run single configuration
 
