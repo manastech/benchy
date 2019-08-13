@@ -99,7 +99,7 @@ module Benchy
     end
 
     def run_once(configuration : Configuration, run_logger, config_index, run_index) : RunOnceResult
-      exec_before_each
+      exec_before_each(configuration)
 
       main_pid_file = File.tempname("main", ".pid")
       save_pid_and_wait = @loader ? " & echo $! > #{main_pid_file} & wait" : ""
@@ -155,27 +155,44 @@ module Benchy
         measures: measures
       )
     ensure
-      exec_after_each
+      exec_after_each(configuration)
     end
 
-    {% for cmd in %i(before before_each after_each after) %}
+    {% for cmd in %i(before after) %}
       getter {{cmd.id}} : String?
 
       def exec_{{cmd.id}}
         if cmd = {{cmd.id}}
-          exec cmd
+          exec cmd, nil
+        end
+      end
+    {% end %}
+
+    {% for cmd in %i(before_each after_each) %}
+      getter {{cmd.id}} : String?
+
+      def exec_{{cmd.id}}(configuration : Configuration)
+        if cmd = {{cmd.id}}
+          exec cmd, configuration
         end
       end
     {% end %}
 
     private def get_output(cmd : String) : String
-      exec(cmd).chomp
+      exec(cmd, nil).chomp
     end
 
-    private def exec(cmd : String) : String
-      Dir.cd base_dir.to_s do
-        `#{cmd}`
-      end
+    private def exec(cmd : String, configuration : Configuration?) : String
+      process = Process.new(cmd,
+        env: configuration.try(&.[:env]),
+        shell: true,
+        chdir: base_dir.to_s,
+        input: Process::Redirect::Inherit, output: Process::Redirect::Pipe, error: Process::Redirect::Inherit)
+
+      output = process.output.gets_to_end
+      status = process.wait
+      $? = status
+      output
     end
 
     def runnable_configurations(config_selector = nil)
