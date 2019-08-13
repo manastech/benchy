@@ -1,0 +1,19 @@
+name: http
+context:
+  crystal: crystal eval 'puts Crystal::VERSION'
+  host: uname
+measure:
+  - time
+  - cpu_time
+  - max_rss
+run: ./matmul $SIZE
+repeat: 3
+before: crystal build --release matmul.cr -o ./matmul
+after: rm -f ./matmul ./matmul.dwarf
+matrix:
+  env:
+    SIZE:
+      - 10
+      - 100
+      - 1000
+      - 2000
