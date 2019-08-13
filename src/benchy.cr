@@ -213,7 +213,6 @@ module Benchy
         result << {env: Hash(String, String).new}
 
         matrix_env.each do |key, values|
-          values = values.map &.to_s
           result = result.flat_map do |r|
             values.map do |v|
               r.clone.tap do |r|
@@ -227,7 +226,7 @@ module Benchy
       if (matrix_include = manifest.matrix.try(&.include)) &&
          !matrix_include.empty?
         matrix_include.each do |run_config|
-          result << {env: run_config.env.transform_values(&.to_s)}
+          result << {env: run_config.env}
         end
       end
 
