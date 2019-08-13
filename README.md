@@ -28,7 +28,7 @@ Ensure that `time` and `ab` are installed. `$ apt-get install time apache2-utils
 
 ```sh
 $ shards build
-$ ./bin/benchy run --csv=output.csv ./sample/http.yml
+$ ./bin/benchy run --csv=output.csv --ndjson=output.ndjson ./sample/http.yml
 ```
 
 ## Contributing

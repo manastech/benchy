@@ -1,4 +1,5 @@
 require "csv"
+require "json"
 require "option_parser"
 require "./benchy"
 
@@ -24,11 +25,16 @@ case ARGV.first?
 when "run"
   cli_manifest_paths = nil
   cli_csv_file = nil
+  cli_ndjson_file = nil
   cli_keep_logs = false
 
   OptionParser.parse(ARGV[1..]) do |opts|
     opts.on("--csv=FILE", "Save results as csv") do |v|
       cli_csv_file = v
+    end
+
+    opts.on("--ndjson=FILE", "Save results as ndjson") do |v|
+      cli_ndjson_file = v
     end
 
     opts.on("--keep-logs", "Save run and loader logs") do |v|
@@ -67,6 +73,52 @@ when "run"
                 .concat(measures_keys.flat_map { |k| m = r.measures[k]; [m[:avg].to_s, m[:std].to_s] })
                 .concat([r.succeeded.to_s, r.errored.to_s]))
             end
+          end
+        end
+      end
+
+      if ndjson_file = cli_ndjson_file
+        File.open(ndjson_file, mode: "w") do |io|
+          context_keys = project.context.keys
+          configuration_keys = project.configuration_keys
+          measures_keys = project.measure_keys
+
+          results.each do |r|
+            JSON.build(io) do |json|
+              json.object do
+                json.field "name", project.name
+                json.field "context" do
+                  json.object do
+                    context_keys.each do |k|
+                      json.field k, project.context[k]
+                    end
+                  end
+                end
+                json.field "configuration" do
+                  json.object do
+                    configuration_keys.each do |k|
+                      json.field k, r.configuration[:env][k]
+                    end
+                  end
+                end
+                json.field "measures" do
+                  json.object do
+                    measures_keys.each do |k|
+                      json.field k do
+                        json.object do
+                          m = r.measures[k]
+                          json.field "avg", m[:avg]
+                          json.field "std", m[:std]
+                        end
+                      end
+                    end
+                  end
+                end
+                json.field "succeeded", r.succeeded
+                json.field "errored", r.errored
+              end
+            end
+            io.puts
           end
         end
       end

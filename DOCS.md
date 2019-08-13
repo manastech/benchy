@@ -7,10 +7,11 @@ Given a `manifest.yml` file there are three commands.
 ### run - Run all configurations
 
 ```sh
-./benchy run --csv=output.csv --keep-logs manifest.yml
+./benchy run --csv=output.csv --ndjson=output.ndjson --keep-logs manifest.yml
 ```
 
 The `--csv` will store the measures in a CSV file.
+The `--ndjson` will store the measures in a NDJSON file.
 The `--keep-logs` will store in `./benchy_logs` the output of each execution.
 
 ### run:\[index\] - Run single configuration
