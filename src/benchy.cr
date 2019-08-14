@@ -103,7 +103,7 @@ module Benchy
 
       main_pid_file = File.tempname("main", ".pid")
       save_pid_and_wait = @loader ? " & echo $! > #{main_pid_file} & wait" : ""
-      instrumented_main = "#{Benchy::BIN_TIME} /bin/sh -c '#{main}#{save_pid_and_wait}'"
+      instrumented_main = "#{Benchy::BIN_TIME} /usr/bin/env bash -c '#{main}#{save_pid_and_wait}'"
 
       debug_cmd instrumented_main, configuration[:env]
       main_process = Process.new(command: instrumented_main,
