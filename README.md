@@ -31,6 +31,8 @@ $ shards build
 $ ./bin/benchy run -v --csv=output.csv --ndjson=output.ndjson ./sample/http.yml
 ```
 
+The ndjson file can be used with [@bcardiff/benchy-viewer](https://observablehq.com/@bcardiff/benchy-viewer).
+
 ## Contributing
 
 1. Fork it (<https://github.com/manastech/benchy/fork>)
