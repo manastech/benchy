@@ -186,7 +186,7 @@ module Benchy
 
     private def exec(cmd : String, configuration : Configuration?) : String
       debug_cmd cmd, configuration.try(&.[:env])
-      process = Process.new(cmd,
+      process = Process.new("/usr/bin/env bash -c '#{cmd}'",
         env: configuration.try(&.[:env]),
         shell: true,
         chdir: base_dir.to_s,
