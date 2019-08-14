@@ -107,8 +107,8 @@ when "run"
                       json.field k do
                         json.object do
                           m = r.measures[k]
-                          json.field "avg", m[:avg]
-                          json.field "std", m[:std]
+                          json.field "avg", (m[:avg].nan? ? "NaN" : m[:avg])
+                          json.field "std", (m[:std].nan? ? "NaN" : m[:std])
                         end
                       end
                     end
