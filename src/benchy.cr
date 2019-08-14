@@ -54,7 +54,7 @@ module Benchy
     getter repeat : Int32
     getter loader : String?
 
-    def initialize(manifest : Manifest, base_dir : Path)
+    def initialize(manifest : Manifest, base_dir : Path, @verbose : Bool = false)
       @base_dir = base_dir
       @name = manifest.name
       @context = Hash(String, String).new
@@ -105,6 +105,7 @@ module Benchy
       save_pid_and_wait = @loader ? " & echo $! > #{main_pid_file} & wait" : ""
       instrumented_main = "#{Benchy::BIN_TIME} /bin/sh -c '#{main}#{save_pid_and_wait}'"
 
+      debug_cmd instrumented_main, configuration[:env]
       main_process = Process.new(command: instrumented_main,
         env: configuration[:env],
         shell: true,
@@ -116,6 +117,7 @@ module Benchy
       loader_status = nil
 
       if loader = @loader
+        debug_cmd loader, configuration[:env]
         loader_process = Process.new(command: loader,
           env: configuration[:env],
           shell: true,
@@ -183,6 +185,7 @@ module Benchy
     end
 
     private def exec(cmd : String, configuration : Configuration?) : String
+      debug_cmd cmd, configuration.try(&.[:env])
       process = Process.new(cmd,
         env: configuration.try(&.[:env]),
         shell: true,
@@ -193,6 +196,11 @@ module Benchy
       status = process.wait
       $? = status
       output
+    end
+
+    private def debug_cmd(cmd, env)
+      return unless @verbose
+      puts "(benchy) #{env.map { |k, v| "#{k}=#{v}" }.join(" ") if env} #{cmd}"
     end
 
     def runnable_configurations(config_selector = nil)

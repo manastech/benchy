@@ -3,11 +3,11 @@ require "json"
 require "option_parser"
 require "./benchy"
 
-def init_projects(manifest_paths)
+def init_projects(manifest_paths, verbose)
   manifest_paths.map do |manifest_path|
     manifest = Benchy::Manifest.from_yaml(File.read(manifest_path))
 
-    Benchy::Project.new(manifest, manifest_path.parent)
+    Benchy::Project.new(manifest, manifest_path.parent, verbose)
   end
 end
 
@@ -27,6 +27,7 @@ when "run"
   cli_csv_file = nil
   cli_ndjson_file = nil
   cli_keep_logs = false
+  cli_verbose = false
 
   OptionParser.parse(ARGV[1..]) do |opts|
     opts.on("--csv=FILE", "Save results as csv") do |v|
@@ -41,13 +42,17 @@ when "run"
       cli_keep_logs = v
     end
 
+    opts.on("-v", "--verbose") do |v|
+      cli_verbose = true
+    end
+
     opts.unknown_args do |before_dash, after_dash|
       cli_manifest_paths = before_dash.map { |f| Path.new(f) }
     end
   end
 
   if manifest_paths = cli_manifest_paths
-    init_projects(manifest_paths).each do |project|
+    init_projects(manifest_paths, cli_verbose).each do |project|
       results = project.run(
         run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil
       )
@@ -132,10 +137,15 @@ when /run:(-?\d+)/
   cli_manifest_paths = nil
   cli_keep_logs = false
   cli_repeat = nil
+  cli_verbose = false
 
   OptionParser.parse(ARGV[1..]) do |opts|
     opts.on("--keep-logs", "Save run and loader logs") do |v|
       cli_keep_logs = v
+    end
+
+    opts.on("-v", "--verbose") do |v|
+      cli_verbose = true
     end
 
     opts.on("--repeat=N", "Override number of repeats") do |n|
@@ -149,7 +159,7 @@ when /run:(-?\d+)/
 
   config_selector = $1
   if manifest_paths = cli_manifest_paths
-    init_projects(manifest_paths).each do |project|
+    init_projects(manifest_paths, cli_verbose).each do |project|
       results = project.run(
         run_logger: cli_keep_logs ? OutputRecorder.new(Path.new(Dir.current)) : nil,
         config_selector: config_selector,
@@ -174,7 +184,7 @@ when /run:(-?\d+)/
   end
 when "matrix"
   manifest_paths = ARGV[1..].map { |f| Path.new(f) }
-  init_projects(manifest_paths).each do |project|
+  init_projects(manifest_paths, false).each do |project|
     puts "#{project.name}:"
     project.configurations.each_with_index do |config, index|
       print "%5d: " % [index]
