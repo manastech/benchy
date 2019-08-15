@@ -10,6 +10,8 @@ It supports client/server programs to run HTTP servers against tools like `ab`.
 
 It supports runnings the program against multiple configurations.
 
+In OSX, To run the http benchmarks you need to [mind the ephemeral port-limit](http://danielmendel.github.io/blog/2013/04/07/benchmarkers-beware-the-ephemeral-port-limit/).
+
 ## Installation
 
 ```sh
