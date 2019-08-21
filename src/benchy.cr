@@ -44,7 +44,7 @@ module Benchy
       end
     end
 
-    alias ExtractSampleProc = Proc(String, Sample)
+    alias ExtractSampleProc = Proc(String, Project, Configuration, Sample)
 
     getter name : String
     getter base_dir : Path
@@ -60,7 +60,7 @@ module Benchy
       @context = Hash(String, String).new
       if manifest_context = manifest.context
         manifest_context.each do |key, cmd|
-          @context[key] = get_output(cmd)
+          @context[key] = get_output(cmd, nil)
         end
       end
 
@@ -142,7 +142,7 @@ module Benchy
       run_status = main_status
       run_status = loader_status if loader_status && !loader_status.success?
 
-      measures = extract_measures(main_output + main_error + loader_output + loader_error) if run_status.success?
+      measures = extract_measures(main_output + main_error + loader_output + loader_error, configuration) if run_status.success?
 
       if run_logger
         run_logger.log(name: name, config_index: config_index, run_index: run_index,
@@ -180,11 +180,11 @@ module Benchy
       end
     {% end %}
 
-    private def get_output(cmd : String) : String
-      exec(cmd, nil).chomp
+    def get_output(cmd : String, configuration : Configuration?) : String
+      exec(cmd, configuration).chomp
     end
 
-    private def exec(cmd : String, configuration : Configuration?) : String
+    def exec(cmd : String, configuration : Configuration?) : String
       debug_cmd cmd, configuration.try(&.[:env])
       process = Process.new("/usr/bin/env bash -c '#{cmd}'",
         env: configuration.try(&.[:env]),
@@ -222,9 +222,9 @@ module Benchy
       configurations.first[:env].keys
     end
 
-    def extract_measures(main_output)
+    def extract_measures(main_output, configuration)
       @measure_samplers.transform_values do |proc|
-        proc.call(main_output)
+        proc.call(main_output, self, configuration)
       end
     end
 
@@ -277,14 +277,30 @@ module Benchy
                      pattern = case c = config.regex
                                when String
                                  c
+                               when Nil
+                                 nil
                                else
                                  raise "Not Supported #{key} #{config}"
                                end
 
-                     ->(main_output : String) {
-                       md = main_output.match(Regex.new(pattern, :multiline))
-                       raise "Missing #{key} measure" unless md
-                       md["measure"]?.try(&.to_f64) || md[0].to_f64
+                     command = config.command
+
+                     ->(main_output : String, project : Project, configuration : Configuration) {
+                       output = if (_command = command)
+                                  project.get_output(_command, configuration)
+                                else
+                                  main_output
+                                end
+
+                       if _pattern = pattern
+                         md = output.match(Regex.new(_pattern, :multiline))
+                         raise "Missing #{key} measure" unless md
+                         md["measure"]?.try(&.to_f64) || md[0].to_f64
+                       else
+                         output.to_f64
+                       end
+
+                       # TODO apply transform to output before f64 conversion
                      }
                    end
 

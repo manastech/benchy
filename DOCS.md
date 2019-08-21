@@ -148,6 +148,19 @@ context:
 # ... stripped ...
 ```
 
+A command can be used to compute a custom measure. The regex configuration section is available to
+match and transform the output if needed.
+
+```yaml
+measure:
+  - computed_by_script:
+      command: ./compute_with_context
+      regex:
+        pattern: (\d+)\s(\d+)
+        group: 2
+        transform: tr '.' ''
+```
+
 ### Complete example
 
 ```yaml
@@ -161,6 +174,12 @@ measure:
   - max_rss
   - requests_per_second:
       regex: Requests per second:\s+(?<measure>\d+.\d+)\s+\[#/sec\] \(mean\)
+  - computed_by_script:
+      command: ./compute_with_context
+      regex:
+        pattern: (\d+)\s(\d+)
+        group: 2
+        transform: tr '.' ''
 run: ./run
 loader: ./loader
 repeat: 10

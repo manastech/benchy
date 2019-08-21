@@ -17,7 +17,8 @@ module Benchy
 
     class CustomMeasure
       YAML.mapping(
-        regex: String | CustomRegexMeasure?
+        regex: String | CustomRegexMeasure?,
+        command: String?
       )
     end
 

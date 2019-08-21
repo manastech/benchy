@@ -94,6 +94,27 @@ describe Benchy::Manifest do
   run: ./run
   YAML
 
+  it_parses "custom meassure with command", <<-YAML
+  name: sample
+  measure:
+    - time
+    - foo:
+        command: ./foo
+  run: ./run
+  YAML
+
+  it_parses "custom meassure with command and regex", <<-YAML
+  name: sample
+  measure:
+    - time
+    - foo:
+        command: ./foo
+        regex:
+          pattern: /hs(<num>\d)f/
+          group: num
+  run: ./run
+  YAML
+
   it_parses "matrix env", <<-YAML
   name: sample
   measure:
