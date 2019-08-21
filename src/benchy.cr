@@ -103,7 +103,7 @@ module Benchy
 
       main_pid_file = File.tempname("main", ".pid")
       save_pid_and_wait = @loader ? " & echo $! > #{main_pid_file} & wait" : ""
-      instrumented_main = "#{Benchy::BIN_TIME} /usr/bin/env bash -c '#{main}#{save_pid_and_wait}'"
+      instrumented_main = "#{Benchy::BIN_TIME} /usr/bin/env bash -c #{escape_bash("#{main}#{save_pid_and_wait}")}"
 
       debug_cmd instrumented_main, configuration[:env]
       main_process = Process.new(command: instrumented_main,
@@ -117,8 +117,9 @@ module Benchy
       loader_status = nil
 
       if loader = @loader
-        debug_cmd loader, configuration[:env]
-        loader_process = Process.new(command: loader,
+        loader_shell = "/usr/bin/env bash -c #{escape_bash(loader)}"
+        debug_cmd loader_shell, configuration[:env]
+        loader_process = Process.new(command: loader_shell,
           env: configuration[:env],
           shell: true,
           output: Process::Redirect::Pipe,
@@ -185,8 +186,9 @@ module Benchy
     end
 
     def exec(cmd : String, configuration : Configuration?) : String
-      debug_cmd cmd, configuration.try(&.[:env])
-      process = Process.new("/usr/bin/env bash -c '#{cmd}'",
+      actual_cmd = "/usr/bin/env bash -c #{escape_bash(cmd.chomp)}"
+      debug_cmd actual_cmd, configuration.try(&.[:env])
+      process = Process.new(actual_cmd,
         env: configuration.try(&.[:env]),
         shell: true,
         chdir: base_dir.to_s,
@@ -196,6 +198,10 @@ module Benchy
       status = process.wait
       $? = status
       output
+    end
+
+    private def escape_bash(cmd : String)
+      "'#{cmd.gsub("'", %q('\''))}'"
     end
 
     private def debug_cmd(cmd, env)
