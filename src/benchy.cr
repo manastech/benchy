@@ -300,7 +300,7 @@ module Benchy
 
                        if _pattern = pattern
                          md = output.match(Regex.new(_pattern, :multiline))
-                         raise "Missing #{key} measure" unless md
+                         raise "Missing #{key} measure in:\n#{output}" unless md
                          md["measure"]?.try(&.to_f64) || md[0].to_f64
                        else
                          output.to_f64
