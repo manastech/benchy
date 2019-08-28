@@ -30,10 +30,12 @@ Ensure that `time` and `ab` are installed. `$ apt-get install time apache2-utils
 
 ```sh
 $ shards build
-$ ./bin/benchy run -v --csv=output.csv --ndjson=output.ndjson ./sample/http.yml
+$ ./bin/benchy run -v --csv=output.csv --ndjson=output.ndjson ./sample/http-ab.yml
 ```
 
 The ndjson file can be used with [@bcardiff/benchy-viewer](https://observablehq.com/@bcardiff/benchy-viewer).
+
+If you prefer to use `wrk`, check `./sample/http-wrk.yml`.
 
 ## Contributing
 

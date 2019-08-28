@@ -1,4 +1,4 @@
-name: http
+name: http-wrk
 context:
   crystal: crystal eval 'puts Crystal::VERSION'
   host: uname
@@ -10,15 +10,19 @@ measure:
       regex: Requests per second:\s+(?<measure>\d+.\d+)\s+\[#/sec\] \(mean\)
 run: ./http
 repeat: 3
-loader: ./wait-for-it.sh 127.0.0.1:8080 -- ab -c $CONNECTIONS -n $REQUESTS http://127.0.0.1:8080/
+loader: ./wait-for-it.sh 127.0.0.1:8080 -- wrk -t$WRK_THREADS -c$WRK_CONNECTIONS -d$WRK_DURATION -shttp-wrk-report.lua http://127.0.0.1:8080/
 before: crystal build --release http.cr -o ./http
 after: rm -f ./http ./http.dwarf
 matrix:
   env:
-    REQUESTS:
+    WRK_THREADS:
+      - 2
+      - 4
+      - 8
+      - 12
+    WRK_CONNECTIONS:
       - 100
       - 1000
       - 10000
-    CONNECTIONS:
-      - 4
-      - 40
+    WRK_DURATION:
+      - 30s
