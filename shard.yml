@@ -8,6 +8,10 @@ targets:
   benchy:
     main: src/cli.cr
 
+dependencies:
+  yaml_mapping:
+    github: crystal-lang/yaml_mapping.cr
+
 crystal: 0.30.1
 
 license: MIT
